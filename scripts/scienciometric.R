@@ -8,15 +8,16 @@ library(rworldmap)
 library(sp)
 library(rgdal)
 
-#original data
-concession.publication.data.original <- readxl::read_excel("20220706_bd_cienciometria.xlsx")
+#raw data
+concession.publication.raw.data <- readxl::read_excel("data/20221220_bd_cienciometria.xlsx", na = c("null", "NA"))
 
-#editions
-concession.publication.data.noNA <- concession.publication.data.original[!is.na(concession.publication.data.original$Keep),]
+#cleaning
+concession.publication.data.noNA <- concession.publication.raw.data[!is.na(concession.publication.raw.data$Keep),]
 concession.publication.data.stay <- concession.publication.data.noNA[concession.publication.data.noNA$Keep=="T",]
+
+#checking
 head(concession.publication.data.stay)
-#duplicate
-#df1 <- concession.publication.data.stay
+str(concession.publication.data.stay)
 
 
 #### maps & graphs ####
@@ -25,8 +26,8 @@ concession.publication.data.stay %>% mutate(Year.by5=cut(Year, breaks=seq(1970,2
                                         count(Year.by5) %>%
                                         ggplot(aes(x=Year.by5, y=n, fill="red")) +
                                         geom_col(show.legend = F)+
-                                        scale_x_discrete("Year", labels=c("1970-75", "85-90", "91-95", "96-2000",
-                                                                          "2001-05", "2020-2022"))
+                                        scale_x_discrete("Year", labels=c("1970-74", "1980-84", "1985-89", "1990-94", "1995-99",
+                                                                          "2000-04", "2005-09", "2010-14", "2020-22"))
                                         
 
 #map study area
@@ -39,7 +40,7 @@ NStudy.byCountry.df <- concession.publication.data.stay %>% group_by(Region) %>%
                                                               ungroup()
 # some editions
 NStudy.byCountry.df  <- data.frame(NStudy.byCountry.df)
-NStudy.byCountry.df  <- NStudy.df [-c(4,6),]
+#NStudy.byCountry.df  <- NStudy.df[-c(4,6),]
 NStudy.byCountry.df$Region[1] <- Countries[2]
 NStudy.byCountry.df$Region[2] <- Countries[3]
 NStudy.byCountry.df$Region[3] <- Countries[4]
@@ -53,17 +54,17 @@ NStudy.byCountry.map <- spTransform(NStudy.byCountry.map, CRS("+proj=longlat +el
 
 NStudy.byCountry.map <- sf::st_as_sf(NStudy.byCountry.map)
 
-centroide<-st_centroid(NStudy.byCountry.map[NStudy.byCountry.map$Region %in% Countries,"geometry"])
+centroide<- sf::st_centroid(NStudy.byCountry.map[NStudy.byCountry.map$Region %in% Countries,"geometry"])
 centroide
 
 ggplot(data = NStudy.byCountry.map) +
   geom_sf()+
   xlab("") + ylab("")+
   annotate(geom = "text", 
-           x = c(-53.17256, 23.57684, 117.3629, 79.54024), # from centroid obj
-           y = c(-10.65544, -2.838937, -2.271715, 22.81924), # from centroid obj
-           label = c(48, 14, 14, 25), # from NStudy.df$NStudy
-           color = c("darkgreen", "orange", "brown", "red"), 
+           x = c(-150, -53.17256, 23.57684, 117.3629, 79.54024), # from centroid obj
+           y = c(0, -10.65544, -2.838937, -2.271715, 22.81924), # from centroid obj
+           label = c(21, 194, 81, 54, 70), # from NStudy.df$NStudy
+           color = c("black", "darkgreen", "orange", "brown", "red"), 
            size = 6)
 
 #graph topic per study area
@@ -73,23 +74,45 @@ concession.publication.data.stay %>% group_by(Region) %>%
                                       ungroup() %>%
                                       ggplot(aes(x=Topic, y=n, fill=Region))+
                                       geom_bar(stat = "identity")+
-                                      scale_fill_manual(values = c("orange", "red", "brown", "darkgreen", "gray85"))+
+                                      scale_fill_manual(values = c("orange", "red", "brown", "darkgreen", "black"))+
                                       coord_flip()+
-                                      theme(legend.position = c(0.8,0.8), legend.background = element_blank())
+                                      theme(legend.position = c(0.85,0.9), legend.background = element_blank())
                                       
 
 #graph effect time since logging
-concession.publication.data.stay %>% group_by(Region) %>%
+concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>% 
+                                      group_by(Region) %>%
                                       filter(Region != "NA") %>%
                                       count(`Time effect`) %>%
                                       ungroup() %>%
                                       ggplot(aes(x=`Time effect`, y=n, fill=Region))+
                                       geom_bar(stat = "identity")+
-                                      scale_fill_manual(values = c("orange", "red", "brown", "darkgreen", "gray85"))+
+                                      scale_fill_manual(values = c("orange", "red", "brown", "darkgreen", "black"))+
                                       coord_flip()+
-                                      theme(legend.position = c(0.8,0.2), legend.background = element_blank())
+                                      theme(legend.position = c(0.9,0.4), legend.background = element_blank())
 
 #graph n logging events
+concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>% 
+                                      group_by(Region) %>%
+                                      filter(Region != "NA") %>%
+                                      count(`Logging events`) %>%
+                                      ungroup() %>%
+                                      ggplot(aes(x=`Logging events`, y=n, fill=Region))+
+                                      geom_bar(stat = "identity")+
+                                      scale_fill_manual(values = c("orange", "red", "brown", "darkgreen", "black"))+
+                                      coord_flip()+
+                                      theme(legend.position = c(0.9,0.4), legend.background = element_blank())
 
+#graph intensity
+concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>% 
+                                      group_by(Region) %>%
+                                      filter(Region != "NA") %>%
+                                      count(Intensity) %>%
+                                      ungroup() %>%
+                                      ggplot(aes(x=Intensity, y=n, fill=Region))+
+                                      geom_bar(stat = "identity")+
+                                      scale_fill_manual(values = c("orange", "red", "brown", "darkgreen", "black"))+
+                                      coord_flip()+
+                                      theme(legend.position = c(0.9,0.4), legend.background = element_blank())
 
 #
