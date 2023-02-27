@@ -18,6 +18,12 @@ head(concession.publication.raw.data)
 str(concession.publication.raw.data)
 length(unique(concession.publication.raw.data$ID))
 
+#excluding 2022 -- searches were conducted in June 2022
+concession.publication.raw.data %>% distinct(ID, .keep_all = T) %>% filter(Year < 2022)
+
+#counting docuemnts by type
+concession.publication.raw.data %>% distinct(ID, .keep_all = T) %>% filter(Year < 2022) %>% group_by(`Document Type`) %>% summarise(n())
+
 #keeping full scoping studies
 concession.publication.data.stay <- concession.publication.raw.data[concession.publication.raw.data$Keep=="T",]
 #checking
@@ -25,50 +31,50 @@ head(concession.publication.data.stay)
 str(concession.publication.data.stay)
 length(unique(concession.publication.data.stay$ID))
 
+#excluding 2022
+concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>% filter(Year < 2022)
+
+#counting docuemnts by type
+concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>% filter(Year < 2022) %>% group_by(`Document Type`) %>% summarise(n())
 
 
 #### maps & graphs ####
 #graph publication year
-g1 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>% 
-                                           mutate(Year = cut(Year, breaks = seq(1970, 2025, 5))) %>%
-                                              group_by(Year) %>% 
-                                                 summarise(N_publications = n()) %>%
-                                           mutate(pp = as.character(round(100 * N_publications / sum(N_publications),2)),
-                                                  lab = paste0(N_publications, " (", pp, "%)")) %>% 
-                                           ggplot(aes(x = Year, y = N_publications)) +
-                                              geom_bar(stat="identity",fill="#aec6cf", show.legend = F) +
-                                              geom_text(aes(label = lab), size = 5, vjust = .1) +
-                                              scale_x_discrete("Year", labels=c("1970-74", "1980-84", "1985-89", "1990-94", "1995-99",
-                                                                             "2000-04", "2005-09", "2010-14", "2015-19", "2020-22"))+
-                                              ylab("N. publications") +
-                                              theme(axis.title.y = element_text(family = "serif", size = 44),
-                                                    axis.title.x = element_blank(),
-                                                    axis.text.x = element_text(family = "serif", size = 36, angle = 45, hjust = 1),
-                                                    axis.text.y = element_blank(),
-                                                    axis.line.y = element_line(linewidth = 1), axis.line.x = element_line(linewidth = 1),
-                                                    axis.ticks.y = element_line(linewidth = 1), axis.ticks.x = element_line(linewidth = 1),
-                                                    legend.title = element_text(family = "serif", size = 36),
-                                                    legend.text = element_text(family = "serif", size = 36),
-                                                    panel.background = element_blank(),
-                                                    panel.spacing.x = unit(1, "lines"),
-                                                    panel.spacing.y = unit(2, "lines"),
-                                                    strip.text = element_text(family = "serif", size = 36))
-
-png("results/publications_by_year.png", width = 1024, height = 576, units = "px", bg = "transparent")
-g1                                              
-dev.off()
+g1 <- concession.publication.data.stay %>% 
+            distinct(ID, .keep_all = T) %>% 
+            filter(Year < 2022) %>% 
+            group_by(Year) %>% 
+               summarise(N_publications = n()) %>%
+            ungroup() %>% 
+            ggplot(aes(x = Year, y = N_publications)) +
+                geom_area(fill="#aec6cf") + geom_point() + geom_line() +
+                geom_smooth(method="glm", method.args = list(family = poisson), se = F, color = "#838996") +
+                scale_x_continuous("", labels = 1975:2021, breaks = 1975:2021, expand = c(0,0.1)) +
+                ylab("N. publications") +
+                theme(axis.title = element_text(family = "serif", size = 22),
+                      axis.text.x = element_text(family = "serif", size = 16, angle = 45, hjust = 1),
+                      axis.text.y = element_text(family = "serif", size = 16),
+                      axis.line = element_line(linewidth = 1),
+                      axis.ticks = element_line(linewidth = 1),
+                      panel.background = element_blank())
 
 
 
+#png("results/publications_by_year.png", width = 1024, height = 576, units = "px", bg = "transparent")
+#g1                                              
+#dev.off()
 
 
 
 #map study area
 # data.frame with the ISO3 country names plus a variable to merge to the map data
-NStudy.byCountry.df <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>% 
-                                                            group_by(country) %>%
-                                                              summarise(NStudy=n()) %>%
-                                                              ungroup()
+NStudy.byCountry.df <- concession.publication.data.stay %>% 
+                           distinct(ID, .keep_all = T) %>% 
+                           filter(Year < 2022) %>% 
+                           group_by(country) %>%
+                               summarise(NStudy=n()) %>%
+                           ungroup() %>% 
+                           arrange(desc(NStudy))
 
 NStudy.byCountry.df  <- data.frame(NStudy.byCountry.df)
 
@@ -80,26 +86,53 @@ NStudy.byCountry.map <- spTransform(NStudy.byCountry.map, CRS("+proj=longlat +el
 
 NStudy.byCountry.map <- sf::st_as_sf(NStudy.byCountry.map)
 
+brk <- c(0, ceiling(max(NStudy.byCountry.map$NStudy, na.rm = T)/2), max(NStudy.byCountry.map$NStudy, na.rm = T))
+
 
 g2 <- ggplot(data = NStudy.byCountry.map) +
-         geom_sf(mapping = aes(fill = NStudy), show.legend = FALSE) + 
-         geom_sf_label_repel(aes(label = NStudy), size = 5, label.padding = unit(1, "mm"), label.r = unit(.5, "mm"),
-                             min.segment.length = .5, direction = "y", max.overlaps = Inf, nudge_x = 1)+
-         #geom_text_repel(aes(label = NStudy, geometry = geometry), stat = "sf_coordinates", size = 3)+
-         scale_fill_gradient(low = "#dee8eb", high = "#7ea4b3")+
-         xlab("") + ylab("")
+        geom_sf(mapping = aes(fill = NStudy)) +
+        coord_sf(ylim = c(-60,60)) + 
+        #geom_sf_label_repel(aes(label = NStudy), size = 5, label.padding = unit(1, "mm"), label.r = unit(.5, "mm"),
+        #                    min.segment.length = .5, direction = "y", max.overlaps = Inf, nudge_x = 1)+
+        scale_fill_gradient(low = "#dee8eb", high = "#7ea4b3", na.value = "#ffffff",
+                            breaks = brk, labels = brk, limits = brk[-2])+
+        xlab("") + ylab("") + 
+        theme_bw() + 
+        theme(axis.title = element_text(family = "serif", size = 22),
+              axis.text = element_blank(),
+              panel.background = element_blank(),
+              legend.title = element_blank(), legend.background = element_blank(),
+              legend.direction = "horizontal", legend.position = c(.1,.1),
+              legend.text = element_text(family = "serif", size = 12),
+              legend.key.width = unit(1, "cm"))
 
-png("results/publications_by_region.png", width = 1440, height = 900, units = "px", bg = "transparent")
-g2                                              
+
+
+#png("results/publications_by_region.png", width = 1440, height = 900, units = "px", bg = "transparent")
+#g2                                              
+#dev.off()
+
+png("results/general_trend.png", width = 1500, height = 1080, units = "px")
+ggarrange(
+  g1, g2, ncol = 1, nrow = 2, labels = c("(A)", "(B)"), label.x = -.01,
+  heights = c(1,1.5)
+)
 dev.off()
 
 
 
 
-
-
 #graph topic per study area
-g3 <- concession.publication.data.stay %>% filter(Region != "NA") %>%
+NStudy.byTopic.df <- concession.publication.data.stay %>% 
+                         filter(Region != "NA" & Year < 2022) %>% 
+                         group_by(Topic) %>%
+                            summarize(n()) %>%
+                         ungroup() %>% 
+                         arrange(desc(`n()`))
+
+
+
+g3 <- concession.publication.data.stay %>% filter(Region != "NA" & Year < 2022) %>%
                                               group_by(Region) %>%
                                                  count(Topic) %>%
                                               ungroup() %>%
@@ -121,9 +154,9 @@ g3 <- concession.publication.data.stay %>% filter(Region != "NA") %>%
                                                           panel.spacing.y = unit(2, "lines"),
                                                           strip.text = element_text(family = "serif", size = 18))
 
-png("results/topic_by_region.png", width = 1024, height = 576, units = "px", bg = "transparent")
-g3                                              
-dev.off()
+#png("results/topic_by_region.png", width = 1024, height = 576, units = "px", bg = "transparent")
+#g3                                              
+#dev.off()
 
 
 
@@ -131,9 +164,19 @@ dev.off()
 
 
 #graph effect time since logging
+NStudy.byTimeeffect.df <- concession.publication.data.stay %>% 
+                             distinct(ID, .keep_all = T) %>%
+                             filter(Region != "NA" & Year < 2022) %>% 
+                             group_by(`Time effect`) %>%
+                                summarize(n()) %>%
+                             ungroup() %>% 
+                             arrange(desc(`n()`))
+
+
+
 g4 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>% 
                                              group_by(Region) %>%
-                                               filter(Region != "NA") %>%
+                                               filter(Region != "NA" & Year < 2022) %>%
                                                count(`Time effect`) %>%
                                              ungroup() %>%
                                                mutate(`Time effect` = factor(`Time effect`, levels = c(">50", "30-50", "10-30", "<=10"))) %>% 
@@ -156,9 +199,9 @@ g4 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>%
                                                          panel.spacing.y = unit(2, "lines"),
                                                          strip.text = element_text(family = "serif", size = 18))
 
-png("results/timeeffect_by_region.png", width = 1024, height = 480, units = "px", bg = "transparent")
-g4                                              
-dev.off()
+#png("results/timeeffect_by_region.png", width = 1024, height = 480, units = "px", bg = "transparent")
+#g4                                              
+#dev.off()
 
 
 
@@ -166,9 +209,19 @@ dev.off()
 
 
 #graph n logging events
+NStudy.byNevents.df <- concession.publication.data.stay %>% 
+                            distinct(ID, .keep_all = T) %>%
+                            filter(Region != "NA" & Year < 2022) %>% 
+                            group_by(`Logging events`) %>%
+                                summarize(n()) %>%
+                            ungroup() %>% 
+                            arrange(desc(`n()`))
+
+
+
 g5 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>% 
                                             group_by(Region) %>%
-                                               filter(Region != "NA") %>%
+                                               filter(Region != "NA" & Year < 2022) %>%
                                                count(`Logging events`) %>%
                                             ungroup() %>%
                                                mutate(`Logging events` = factor(`Logging events`, levels = c(">2", "2", "1"))) %>% 
@@ -191,9 +244,9 @@ g5 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>%
                                                            panel.spacing.y = unit(2, "lines"),
                                                            strip.text = element_text(family = "serif", size = 18))
 
-png("results/nevents_by_region.png", width = 1024, height = 480, units = "px", bg = "transparent")
-g5                                              
-dev.off()
+#png("results/nevents_by_region.png", width = 1024, height = 480, units = "px", bg = "transparent")
+#g5                                              
+#dev.off()
 
 
 
@@ -201,9 +254,19 @@ dev.off()
 
 
 #graph intensity
+NStudy.byIntensity.df <- concession.publication.data.stay %>% 
+                              distinct(ID, .keep_all = T) %>%
+                              filter(Region != "NA" & Year < 2022) %>% 
+                              group_by(Intensity) %>%
+                                  summarize(n()) %>%
+                              ungroup() %>% 
+                              arrange(desc(`n()`))
+
+
+
 g6 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>% 
                                             group_by(Region) %>%
-                                               filter(Region != "NA") %>%
+                                               filter(Region != "NA" & Year < 2022) %>%
                                                count(Intensity) %>%
                                             ungroup() %>%
                                                 mutate(Intensity = factor(Intensity, levels = c("high", "medium", "low"))) %>% 
@@ -226,16 +289,16 @@ g6 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>%
                                                              panel.spacing.y = unit(2, "lines"),
                                                              strip.text = element_text(family = "serif", size = 18))
 
-png("results/intensity_by_region.png", width = 1024, height = 480, units = "px", bg = "transparent")
-g6                                              
-dev.off()
+#png("results/intensity_by_region.png", width = 1024, height = 480, units = "px", bg = "transparent")
+#g6                                              
+#dev.off()
 
 
 
 
 
 
-png("results/geral.png", width = 1440, height = 1080, units = "px", bg = "transparent")
+png("results/effects.png", width = 1440, height = 1080, units = "px", bg = "transparent")
 ggarrange(
   g3, ncol = 2, nrow = 1, widths = c(2,1), labels = "(A)",
   ggarrange(
