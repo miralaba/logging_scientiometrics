@@ -154,9 +154,9 @@ g3 <- concession.publication.data.stay %>% filter(Region != "NA" & Year < 2022) 
                                                           panel.spacing.y = unit(2, "lines"),
                                                           strip.text = element_text(family = "serif", size = 18))
 
-#png("results/topic_by_region.png", width = 1024, height = 576, units = "px", bg = "transparent")
-#g3                                              
-#dev.off()
+png("results/topic_by_region.png", width = 1024, height = 576, units = "px", bg = "transparent")
+g3                                              
+dev.off()
 
 
 
