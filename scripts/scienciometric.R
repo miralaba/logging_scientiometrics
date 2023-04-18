@@ -12,7 +12,7 @@ library(sp)
 library(rgdal)
 
 #raw data
-concession.publication.raw.data <- readxl::read_excel("data/20230222_bd_cienciometria.xlsx", na = "null")
+concession.publication.raw.data <- readxl::read_excel("data/20230417_bd_cienciometria.xlsx", na = c("NA", "null"))
 #checking
 head(concession.publication.raw.data)
 str(concession.publication.raw.data)
@@ -54,7 +54,7 @@ g1 <- concession.publication.data.stay %>%
             ungroup() %>% 
             ggplot(aes(x = Year, y = N_publications)) +
                 geom_area(fill="#aec6cf") + geom_point() + geom_line() +
-                geom_smooth(method="glm", method.args = list(family = poisson), se = F, color = "#838996") +
+                geom_smooth(method="gam", method.args = list(family = poisson), se = F, color = "#838996") +
                 scale_x_continuous("", labels = 1975:2021, breaks = 1975:2021, expand = c(0,0.1)) +
                 ylab("N. publications") +
                 theme(axis.title = element_text(family = "serif", size = 22),
@@ -74,6 +74,11 @@ g1 <- concession.publication.data.stay %>%
 
 #map study area
 # data.frame with the ISO3 country names plus a variable to merge to the map data
+concession.publication.data.stay$country <- ifelse(concession.publication.data.stay$country == "Bolivian", "Bolivia", concession.publication.data.stay$country)
+concession.publication.data.stay$country <- ifelse(concession.publication.data.stay$country == "Central African Republi", "Central African Republic", concession.publication.data.stay$country)
+concession.publication.data.stay$country <- ifelse(concession.publication.data.stay$country == "French Guianese", "French Guiana", concession.publication.data.stay$country)
+concession.publication.data.stay$country <- ifelse(concession.publication.data.stay$country == "Trinidad", "Trinidad and Tobago", concession.publication.data.stay$country)
+
 NStudy.byCountry.df <- concession.publication.data.stay %>% 
                            distinct(ID, .keep_all = T) %>% 
                            filter(Year < 2022) %>% 
@@ -183,10 +188,10 @@ g4 <- concession.publication.data.stay %>%
                      tally() %>% 
                      ungroup() %>% 
                      mutate(`Time effect` = factor(`Time effect`, levels = c("<=10", "10-30", "30-50", ">50", "unknown")),
-                            `Logging events` = factor(`Logging events`, levels = c(">2", "2", "1", "unknown")),
+                            `Logging events` = factor(`Logging events`, levels = c(">2", "2.0", "1.0", "unknown")),
                             Intensity = factor(Intensity, levels = c("low", "medium", "high", "unknown"))) %>% 
                      ggplot(aes(`Time effect`, Topic, color = Intensity, alpha=.5, size=n)) +
-                     geom_point(position = position_dodge(.3)) +
+                     geom_point(position = "jitter") + #position_dodge(.3)
                      scale_color_manual(values = c("#07b6f8", "#f8c207", "#f8073d", "#97969b")) +
                      scale_size_continuous(breaks = c(1,5,10,15,20), range = c(3,10)) +
                      labs(x="", y="") +
@@ -276,7 +281,7 @@ g6 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>%
                                                filter(Region != "NA" & Year < 2022) %>%
                                                count(`Logging events`) %>%
                                             ungroup() %>%
-                                               mutate(`Logging events` = factor(`Logging events`, levels = c(">2", "2", "1"))) %>% 
+                                               mutate(`Logging events` = factor(`Logging events`, levels = c(">2", "2.0", "1.0"))) %>% 
                                                   ggplot(aes(x=`Logging events`, y=n, fill=Region))+
                                                      geom_bar(stat = "identity")+
                                                      geom_hline(yintercept = 20, linetype = "dashed", linewidth = 1, color ="gray56") + 
