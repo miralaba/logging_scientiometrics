@@ -12,7 +12,7 @@ library(sp)
 library(rgdal)
 
 #raw data
-concession.publication.raw.data <- readxl::read_excel("data/20230417_bd_cienciometria.xlsx", na = c("NA", "null"))
+concession.publication.raw.data <- readxl::read_excel("data/20230801_bd_cienciometria.xlsx", na = c("NA", "null"))
 #checking
 head(concession.publication.raw.data)
 str(concession.publication.raw.data)
@@ -123,7 +123,7 @@ g2 <- ggplot(data = NStudy.byCountry.map) +
 #g2                                              
 #dev.off()
 
-png("results/general_trend.png", width = 1500, height = 1080, units = "px")
+png("results/general_trend_final.png", width = 1500, height = 1080, units = "px")
 ggarrange(
   g1, g2, ncol = 1, nrow = 2, labels = c("(A)", "(B)"), label.x = -.01,
   heights = c(1,1.5)
@@ -141,7 +141,7 @@ NStudy.byTopic.df <- concession.publication.data.stay %>%
                          ungroup() %>% 
                          arrange(desc(`n()`))
 
-write.csv(NStudy.byTopic.df, "results/N_study_bytopic.csv", row.names = F)
+write.csv(NStudy.byTopic.df, "results/N_study_bytopic_final.csv", row.names = F)
 
 
 g3 <- concession.publication.data.stay %>% filter(Region != "NA" & Year < 2022) %>%
@@ -167,7 +167,7 @@ g3 <- concession.publication.data.stay %>% filter(Region != "NA" & Year < 2022) 
                                                           panel.spacing.y = unit(2, "lines"),
                                                           strip.text = element_text(family = "serif", size = 18))
 
-png("results/topic_by_region.png", width = 1024, height = 576, units = "px", bg = "transparent")
+png("results/topic_by_region_final.png", width = 1024, height = 576, units = "px", bg = "transparent")
 g3                                              
 dev.off()
 
@@ -188,7 +188,7 @@ g4 <- concession.publication.data.stay %>%
                      tally() %>% 
                      ungroup() %>% 
                      mutate(`Time effect` = factor(`Time effect`, levels = c("<=10", "10-30", "30-50", ">50", "unknown")),
-                            `Logging events` = factor(`Logging events`, levels = c(">2", "2.0", "1.0", "unknown")),
+                            `Logging events` = factor(`Logging events`, levels = c(">2", "2", "1", "unknown")),
                             Intensity = factor(Intensity, levels = c("low", "medium", "high", "unknown"))) %>% 
                      ggplot(aes(`Time effect`, Topic, color = Intensity, alpha=.5, size=n)) +
                      geom_point(position = "jitter") + #position_dodge(.3)
@@ -212,7 +212,7 @@ g4 <- concession.publication.data.stay %>%
                      
 
 
-png("results/study_gap.png", width = 1024, height = 750, units = "px")
+png("results/study_gap_final.png", width = 1024, height = 750, units = "px")
 g4
 dev.off()
 
@@ -281,7 +281,7 @@ g6 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>%
                                                filter(Region != "NA" & Year < 2022) %>%
                                                count(`Logging events`) %>%
                                             ungroup() %>%
-                                               mutate(`Logging events` = factor(`Logging events`, levels = c(">2", "2.0", "1.0"))) %>% 
+                                               mutate(`Logging events` = factor(`Logging events`, levels = c(">2", "2", "1"))) %>% 
                                                   ggplot(aes(x=`Logging events`, y=n, fill=Region))+
                                                      geom_bar(stat = "identity")+
                                                      geom_hline(yintercept = 20, linetype = "dashed", linewidth = 1, color ="gray56") + 
