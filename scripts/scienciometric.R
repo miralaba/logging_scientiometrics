@@ -102,7 +102,7 @@ brk <- c(0, ceiling(max(NStudy.byCountry.map$NStudy, na.rm = T)/2), max(NStudy.b
 
 g2 <- ggplot(data = NStudy.byCountry.map) +
         geom_sf(mapping = aes(fill = NStudy)) +
-        coord_sf(ylim = c(-60,60)) + 
+        coord_sf(ylim = c(-23.5,23.5), xlim = c(-120, 150)) + 
         #geom_sf_label_repel(aes(label = NStudy), size = 5, label.padding = unit(1, "mm"), label.r = unit(.5, "mm"),
         #                    min.segment.length = .5, direction = "y", max.overlaps = Inf, nudge_x = 1)+
         scale_fill_gradient(low = "#dee8eb", high = "#7ea4b3", na.value = "#ffffff",
@@ -123,7 +123,7 @@ g2 <- ggplot(data = NStudy.byCountry.map) +
 #g2                                              
 #dev.off()
 
-png("results/general_trend_final.png", width = 1500, height = 1080, units = "px")
+png("results/general_trend_final2.png", width = 1500, height = 1080, units = "px")
 ggarrange(
   g1, g2, ncol = 1, nrow = 2, labels = c("(A)", "(B)"), label.x = -.01,
   heights = c(1,1.5)
@@ -143,12 +143,19 @@ NStudy.byTopic.df <- concession.publication.data.stay %>%
 
 write.csv(NStudy.byTopic.df, "results/N_study_bytopic_final.csv", row.names = F)
 
+lv <- concession.publication.data.stay %>% filter(Region != "NA" & Year < 2022) %>%
+  count(Topic) %>%
+  arrange(n) %>% 
+  select(Topic)
+
 
 g3 <- concession.publication.data.stay %>% filter(Region != "NA" & Year < 2022) %>%
                                               group_by(Region) %>%
                                                  count(Topic) %>%
                                               ungroup() %>%
-                                                 ggplot(aes(x=reorder(Topic, n), y=n, fill=Region))+
+                                              arrange(desc(n)) %>% 
+                                              mutate(Topic = factor(Topic, levels=lv$Topic)) %>% 
+                                                 ggplot(aes(x=Topic, y=n, fill=Region))+
                                                     geom_bar(stat = "identity") +
                                                     geom_hline(yintercept = 20, linetype = "dashed", linewidth = 1, color ="gray56") + 
                                                     scale_fill_manual(values = c("#cbb466", "#cfaec6", "#b38c7e", "#aecfb7", "#8c7eb3"))+
@@ -167,7 +174,7 @@ g3 <- concession.publication.data.stay %>% filter(Region != "NA" & Year < 2022) 
                                                           panel.spacing.y = unit(2, "lines"),
                                                           strip.text = element_text(family = "serif", size = 18))
 
-png("results/topic_by_region_final.png", width = 1024, height = 576, units = "px", bg = "transparent")
+png("results/topic_by_region_final2.png", width = 1024, height = 576, units = "px", bg = "transparent")
 g3                                              
 dev.off()
 
@@ -238,7 +245,7 @@ g5 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>%
                                                mutate(`Time effect` = factor(`Time effect`, levels = c(">50", "30-50", "10-30", "<=10"))) %>% 
                                                  ggplot(aes(x=`Time effect`, y=n, fill=Region))+
                                                    geom_bar(stat = "identity")+
-                                                   geom_hline(yintercept = 20, linetype = "dashed", linewidth = 1, color ="gray56") + 
+                                                   #geom_hline(yintercept = 20, linetype = "dashed", linewidth = 1, color ="gray56") + 
                                                    scale_fill_manual(values = c("#cbb466", "#cfaec6", "#b38c7e", "#aecfb7", "#8c7eb3"))+
                                                    coord_flip(ylim = c(0, 500)) +
                                                    theme(legend.position = c(0.9,0.4), legend.background = element_blank())+
@@ -284,7 +291,7 @@ g6 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>%
                                                mutate(`Logging events` = factor(`Logging events`, levels = c(">2", "2", "1"))) %>% 
                                                   ggplot(aes(x=`Logging events`, y=n, fill=Region))+
                                                      geom_bar(stat = "identity")+
-                                                     geom_hline(yintercept = 20, linetype = "dashed", linewidth = 1, color ="gray56") + 
+                                                     #geom_hline(yintercept = 20, linetype = "dashed", linewidth = 1, color ="gray56") + 
                                                      scale_fill_manual(values = c("#cbb466", "#cfaec6", "#b38c7e", "#aecfb7", "#8c7eb3"))+
                                                      coord_flip(ylim = c(0, 500))+
                                                      theme(legend.position = c(0.9,0.4), legend.background = element_blank())+
@@ -330,7 +337,7 @@ g7 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>%
                                                 mutate(Intensity = factor(Intensity, levels = c("high", "medium", "low"))) %>% 
                                                     ggplot(aes(x=Intensity, y=n, fill=Region))+
                                                        geom_bar(stat = "identity")+
-                                                       geom_hline(yintercept = 20, linetype = "dashed", linewidth = 1, color ="gray56") + 
+                                                       #geom_hline(yintercept = 20, linetype = "dashed", linewidth = 1, color ="gray56") + 
                                                        scale_fill_manual(values = c("#cbb466", "#cfaec6", "#b38c7e", "#aecfb7", "#8c7eb3"))+
                                                        coord_flip(ylim = c(0, 500))+
                                                        theme(legend.position = c(0.9,0.4), legend.background = element_blank())+
@@ -354,7 +361,7 @@ g7 <- concession.publication.data.stay %>% distinct(ID, .keep_all = T) %>%
 
 
 
-png("results/study_sites_characteristics.png", width = 920, height = 1080, units = "px", bg = "transparent")
+png("results/study_sites_characteristics2.png", width = 920, height = 1080, units = "px", bg = "transparent")
 ggarrange(
     g5, g6, g7, ncol = 1, nrow = 3, align = "hv", labels = c("(A)", "(B)", "(C)")#, label.x = -.05
 )
